@@ -145,7 +145,11 @@ class Ui:
                     grad_seen = True
                     stats["gradient_trip_ms"] = int((time.monotonic() - t0) * 1000)
                 grad_reads += 1
-                grads = read_text(gcrop.copy())
+                grads = read_text(gcrop.copy(), color="chip")
+                if not any(c.isalpha() for c in normalize_text(grads.raw)):
+                    # rare inverse case: keep the luma fallback so a real
+                    # chip never degrades to 'gradient-present' by newness
+                    grads = read_text(gcrop.copy())
                 gnorm = normalize_text(grads.raw)
                 if any(c.isalpha() for c in gnorm):
                     gradient = gnorm
@@ -164,8 +168,11 @@ class Ui:
     @staticmethod
     def _ocr_chip_label(crop: np.ndarray, fallback: str) -> str:
         """OCR a chip crop for its word; unlabelled-but-sure falls back."""
-        res = read_text(crop.copy())
+        res = read_text(crop.copy(), color="chip")
         norm = normalize_text(res.raw)
+        if not any(c.isalpha() for c in norm):
+            res = read_text(crop.copy())
+            norm = normalize_text(res.raw)
         if any(c.isalpha() for c in norm):
             return norm
         return fallback
@@ -416,7 +423,9 @@ class Ui:
         self.click_region("search_field")
         time.sleep(0.2)
         for attempt in range(1, self.cfg.automation.max_action_retries + 1):
-            select_all_and_delete(self.window)
+            # fast path first; the verification below escalates to the
+            # backspace sweep only if the field is not actually empty
+            select_all_and_delete(self.window, sweep=attempt > 1)
             time.sleep(0.35)
             value, stable = self.region_text("search_field", attempts=2)
             if stable and query_field_empty(value):

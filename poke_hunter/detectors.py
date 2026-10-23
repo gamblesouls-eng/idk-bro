@@ -90,24 +90,72 @@ def detect_gradient(crop: np.ndarray, spec) -> Tuple[bool, dict]:
     }
 
 
-def detect_gradient_stable(grab: Grabber, region: Region, spec,
-                           attempts: int = 3, name: str = "gradient") -> Tuple[Optional[bool], dict]:
-    """Repeat detection until consecutive reads agree (like detect_star_stable)."""
+def _stable_verdicts(detect, attempts: int, name: str, bias: str,
+                     delay_s: float = 0.3) -> Tuple[Optional[bool], dict]:
+    """Shared stability loop for the boolean indicators.
+
+    Early exit: two CONSECUTIVE agreeing readings (old code compared only
+    the first two verdicts, so a flapping [None, True, True, True] never
+    agreed and fell through to UNKNOWN).
+
+    End-of-loop bias differs per detector, deliberately:
+      bias="true"  -> any True with no None returns True: used by indicators
+        whose missed positive is expensive (a missed shiny is worse than a
+        second look);
+      bias="false" -> only unanimous True returns True (presence reports
+        must be noise-free); everything else is UNKNOWN.
+
+    Returns (verdict, stats): verdict True/False/None; None == UNKNOWN.
+    """
     verdicts: List[Optional[bool]] = []
     stats = {}
     for _ in range(max(1, attempts)):
-        v, stats = detect_gradient(grab.capture_region(region, fresh=True), spec)
+        v, stats = detect()
         verdicts.append(v)
-        if len(verdicts) >= 2 and verdicts[0] == verdicts[1]:
-            return verdicts[0], stats
-        time.sleep(0.3)
+        if len(verdicts) >= 2 and verdicts[-1] == verdicts[-2]:
+            return verdicts[-1], stats
+        time.sleep(delay_s)
     if all(v is False for v in verdicts):
         return False, stats
-    if all(v is True for v in verdicts):
-        return True, stats
-    log.info("%s band unstable over %d reads, marking UNKNOWN (stats=%s)",
-             name, attempts, stats)
+    if bias == "true":
+        # indicator detectors: a False verdict repeated alone is trusted; a
+        # single True amid non-None False verdicts is a candidate worth
+        # trusting over returning UNKNOWN (missed positive is expensive)
+        if any(v is True for v in verdicts) and all(v in (True, False)
+                                                   for v in verdicts):
+            return True, stats
+    elif bias == "false":
+        if all(v is True for v in verdicts):
+            return True, stats
+    log.info("%s indicator unstable over %d reads, marking UNKNOWN "
+             "(stats=%s)", name, attempts, stats)
     return None, stats
+
+
+def detect_star_stable(grab: Grabber, region: Region, spec: StarSpec,
+                       attempts: int = 3, name: str = "star") -> Tuple[Optional[bool], dict]:
+    """Repeat the star detector until consecutive reads agree.
+
+    NOTE the deliberate bias (see `_stable_verdicts`): disagreement with at
+    least one True read is reported True, not UNKNOWN — missing a real shiny
+    (skipping the hunt target) is strictly worse than an extra check. Only
+    two agreeing False reads count as definitively absent."""
+    return _stable_verdicts(
+        lambda: detect_star(grab.capture_region(region, fresh=True), spec),
+        attempts, name, bias="true")
+
+
+def detect_gradient_stable(grab: Grabber, region: Region, spec,
+                           attempts: int = 3, name: str = "gradient") -> Tuple[Optional[bool], dict]:
+    """Repeat the gradient-band detector until consecutive reads agree.
+
+    Stricter than detect_star_stable: unanimity above (see
+    `_stable_verdicts`, bias="false") — in the legacy fallback path a
+    reported gradient does the matching, so one noisy read must not
+    fabricate presence."""
+    return _stable_verdicts(
+        lambda: detect_gradient(grab.capture_region(region, fresh=True), spec),
+        attempts, name, bias="false")
 
 
 # --------------------------------------------------------------------------- #
@@ -172,26 +220,6 @@ def detect_color_chip(crop: np.ndarray, spec) -> Tuple[bool, dict]:
         "color_pixels": sat,
         "threshold": spec.dark_box_min_pixels,
     }
-
-
-def detect_star_stable(grab: Grabber, region: Region, spec: StarSpec,
-                       attempts: int = 3, name: str = "star") -> Tuple[Optional[bool], dict]:
-    """Repeat detection until the verdict is stable (never flips to True from noise)."""
-    verdicts: List[Optional[bool]] = []
-    stats = {}
-    for _ in range(max(1, attempts)):
-        v, stats = detect_star(grab.capture_region(region, fresh=True), spec)
-        verdicts.append(v)
-        if len(verdicts) >= 2 and verdicts[0] == verdicts[1]:
-            return verdicts[0], stats
-        time.sleep(0.3)
-    if all(v is False for v in verdicts):
-        return False, stats
-    if any(v is True for v in verdicts) and all(v in (True, False) for v in verdicts):
-        return True, stats
-    log.info("%s indicator unstable over %d reads, marking UNKNOWN (stats=%s)",
-             name, attempts, stats)
-    return None, stats
 
 
 # --------------------------------------------------------------------------- #
@@ -275,7 +303,6 @@ class MuteMonitor:
                  red_hsv_min: tuple = (0, 140, 120), red_hsv_max: tuple = (10, 255, 255),
                  min_red_fraction: float = 0.45,
                  active_frames: int = 3, idle_frames: int = 4):
-        import cv2
         self.cv2 = cv2
         self.grab = grab
         self.region = region
@@ -328,10 +355,10 @@ class MuteMonitor:
         return self.state
 
     def learn_baseline(self) -> None:
-        """No fingerprint baseline needed for red-button presence detection.
+        """Deprecated: replaced by red-button presence detection.
 
-        Kept for API compatibility (called at bot startup).
-        """
+        Kept only for API compatibility (still called at bot startup) — its
+        only effect now is one extra classify() to log the initial state."""
         frame = self.grab.frame(fresh=True)
         verdict, frac = self.classify(frame)
         self.state = verdict

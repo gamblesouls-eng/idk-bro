@@ -61,6 +61,42 @@ def spec():
                           gradient_zone=(0, 0, 380, 44))
 
 
+def test_color_chip_prep_draws_chip_letters_black_on_white():
+    """Production chip-OCR mode (_prep color='chip')."""
+    from poke_hunter.ocr import _prep
+    bgr = np.full((44, 380, 3), 121, dtype=np.uint8)     # box v=121
+    bgr[30:36, 180:220] = (255, 255, 60)                 # letter pixels, v~198
+    bgr[16:20, 100:130] = (40, 40, 40)                   # dark letter pixels
+    canvas = _prep(bgr, 1, color="chip")
+    # letters -> black glyphs on a white background
+    assert canvas.shape[:2] == (44, 380)
+    dark = (canvas == 0)
+    assert dark[31:34, 185:215].sum() >= 10   # bright letter captured
+    assert dark[16:20, 105:125].sum() >= 5    # dark letter captured too
+    assert not dark[5, 0:].any()              # frame bar area stays white (margin cut)
+    # box interior -> white
+    assert not dark[38, 200:260].any()
+
+
+def test_read_text_caches_identical_crops_by_pixels():
+    """Memoization: identical pixels skip the Tesseract subprocess."""
+    imgs = []
+    canv = np.full((44, 300), 255, np.uint8)
+    cv2.putText(canv, "repeatable", (12, 32), cv2.FONT_HERSHEY_SIMPLEX,
+                1.0, 0, 3, cv2.LINE_AA)
+    from poke_hunter import ocr
+    ocr.clear_ocr_cache()
+    img = cv2.cvtColor(canv, cv2.COLOR_GRAY2BGR)
+    first = ocr.read_text(img, psm=7)
+    second = ocr.read_text(img.copy(), psm=7)
+    assert first.value == second.value
+    # cache stores >= 1 entry and returns the same object
+    assert ocr._OCR_CACHE
+    third = ocr.read_text(img.copy(), psm=7)
+    assert third is second
+    # failed reads are not cached: empty engine result stays uncached
+    blank = np.full((40, 200, 3), 128, np.uint8)
+    _ = ocr.read_text(blank, psm=7)
 def test_reskin_letters_trip_on_blobs(spec):
     rng = np.random.default_rng(7)
     hsv = _draw_letters(rng, _panel_base())
