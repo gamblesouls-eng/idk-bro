@@ -1,0 +1,50 @@
+{
+  "instances": [
+    { "name": "instance1", "window_title_patterns": ["Roblox"], "window_index": 0 }
+  ],
+  "target": {
+    "species": null,
+    "shiny": null,
+    "reskin": "any",
+    "gradient": "any",
+    "tint": null
+  },
+  "battle": {
+    "target_hp_state": "red",
+    "weakening_move": "Spore",
+    "weakening_style": "sleep",
+    "recovery_pokemon_species": "Breloom",
+    "recovery_pokemon_level": 150,
+    "recovery_item": "Full Restore",
+    "pp_item": "Max Elixir",
+    "heal_hp_state": "yellow",
+    "catch_item": "Repeat Ball"
+  },
+  "automation": {
+    "max_ocr_retries": 3,
+    "max_action_retries": 3,
+    "max_weaken_attempts": 40,
+    "max_recovery_cycles": 2,
+    "max_ball_attempts": 6,
+    "encounter_stability_frames": 3,
+    "encounter_end_frames": 4,
+    "loop_interval_ms": 250,
+    "post_click_settle_ms": 700,
+    "ui_settle_ms": 800,
+    "attack_settle_ms": 2200,
+    "throw_settle_ms": 3500,
+    "run_end_timeout_s": 6,
+    "notification_target_detected": true,
+    "stop_after_successful_capture": false,
+    "capture_each_encounter": true,
+    "save_after_capture": true
+  },
+  "discord": {
+    "webhook_env_var": "POKEMON_DISCORD_WEBHOOK",
+    "notify_capturing": false,
+    "notify_recovery": true,
+    "notify_failures": true,
+    "timeout_s": 10,
+    "max_attempts": 3
+  }
+}

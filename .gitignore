@@ -1,0 +1,8 @@
+# Windows specifics
+__pycache__/
+*.pyc
+logs/
+.pytest_cache/
+
+# SECRET: Discord webhook, never commit
+config/.webhook

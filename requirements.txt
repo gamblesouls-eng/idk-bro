@@ -1,0 +1,12 @@
+# core runtime
+mss
+numpy
+opencv-python
+pillow
+pytesseract
+pydirectinput
+pywin32
+requests
+
+# dev / offline audit tooling
+pytest

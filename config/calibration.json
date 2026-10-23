@@ -1,0 +1,91 @@
+{
+  "_comment": "Calibrated against the live game 1920x1080 client. Regions are window-relative [x,y,w,h]. Star specs pending a real shiny/tint reference; gradient tab not yet observed.",
+  "regions": {
+    "mute_button": [1471, 103, 209, 59],
+    "species_label": [378, 246, 320, 66],
+    "wild_level_label": [640, 256, 185, 60],
+    "hp_bar": [532, 326, 290, 28],
+    "reskin_label": [510, 356, 340, 36],
+    "gradient_label": [400, 392, 400, 56],
+    "shiny_indicator": [790, 258, 120, 52],
+    "tint_indicator": [920, 258, 120, 52],
+    "run_button": [1332, 876, 347, 89],
+    "fight_button": [288, 876, 347, 89],
+    "switch_button": [636, 876, 347, 88],
+    "bag_button": [984, 876, 347, 89],
+    "dynamax_banner": [636, 965, 573, 89],
+    "back_button": [1332, 905, 348, 89],
+    "dialog_strip": [288, 745, 1392, 105],
+    "backpack_title": [388, 170, 350, 90],
+    "party_title": [1240, 105, 330, 32],
+    "recovers_tab": [420, 300, 130, 55],
+    "pokeballs_tab": [420, 365, 130, 55],
+    "category_header": [560, 280, 300, 75],
+    "search_field": [1075, 289, 445, 54],
+    "close_bag": [1300, 197, 215, 48],
+    "use_button": [1220, 893, 215, 45],
+    "capture_message": [288, 745, 1392, 105],
+    "chat_button": [118, 16, 48, 40],
+    "chat_tabs": [8, 62, 480, 40],
+    "chat_input_hint": [28, 375, 455, 36],
+    "chat_toast": [800, 50, 320, 42],
+    "chat_history": [8, 96, 480, 285],
+    "chat_defocus": [1780, 480, 60, 60],
+    "fighter_hp_bar": [1325, 688, 268, 32]
+  },
+  "grids": {
+    "move_slots": { "region": [288, 755, 344, 148], "step": [348, 0], "count": 4 },
+    "item_rows": { "region": [560, 362, 944, 70], "step": [0, 72], "count": 6,
+                   "text_zone": [95, 10, 545, 50] },
+    "party_slots": {
+      "region": [268, 122, 616, 190],
+      "step": [0, 229],
+      "count": 6,
+      "per_col_rows": 3,
+      "col_offset": [692, 56]
+    }
+  },
+  "detection": {
+    "shiny_star": {
+      "hsv_min": [95, 60, 120], "hsv_max": [125, 255, 255],
+      "bg_hsv_min": [0, 0, 0], "bg_hsv_max": [179, 120, 140],
+      "min_pixels": 8, "bg_min_fraction": 0.85
+    },
+    "tint_star": {
+      "hsv_min": [0, 0, 200], "hsv_max": [179, 40, 255],
+      "bg_hsv_min": [0, 0, 0], "bg_hsv_max": [179, 150, 140],
+      "min_pixels": 8, "bg_min_fraction": 0.85
+    },
+    "hp_colors": {
+      "red": { "hsv_min": [0, 90, 120], "hsv_max": [8, 255, 255] },
+      "yellow": { "hsv_min": [18, 100, 120], "hsv_max": [38, 255, 255] },
+      "green": { "hsv_min": [44, 80, 110], "hsv_max": [70, 255, 255] }
+    },
+    "gradient_band": {
+      "sat_min": 120, "val_min": 80, "min_fraction": 0.03
+    },
+    "aspect_chips": {
+      "reskin_zone": [480, 354, 380, 42],
+      "gradient_zone": [420, 398, 380, 44],
+      "reskin_letter_v_min": 158,
+      "reskin_letter_s_max": 80,
+      "reskin_min_pixels": 180,
+      "grad_sat_min": 100,
+      "grad_val_min": 90,
+      "grad_min_pixels": 430,
+      "dark_box_v_min": 95,
+      "dark_box_v_max": 145,
+      "dark_box_s_max": 60,
+      "dark_box_min_pixels": 6000,
+      "wait_ms": 2500,
+      "poll_ms": 300
+    },
+    "favorite_star": {
+      "zone": [72, 40, 18, 22],
+      "hsv_min": [8, 90, 110], "hsv_max": [35, 255, 255],
+      "min_fraction": 0.03
+    },
+    "hp_sample_fraction": 0.25,
+    "hp_min_fill_pixels": 20
+  }
+}

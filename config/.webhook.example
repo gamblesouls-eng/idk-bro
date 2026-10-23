@@ -1,0 +1,3 @@
+# Copy this file to config/.webhook (git-ignored) and paste your Discord
+# webhook URL on the first line — no other content is needed.
+https://discord.com/api/webhooks/XXXXXXXXXXXXXXXXXX/YYYYYYYYYYYYYYY
