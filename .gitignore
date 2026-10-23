@@ -6,3 +6,14 @@ logs/
 
 # SECRET: Discord webhook, never commit
 config/.webhook
+
+# local debug/calibration captures (keep only reference shots tracked)
+calib_shots/*
+!calib_shots/idle_02.png
+!calib_shots/fight_menu_real.png
+!calib_shots/live_encounter28.png
+!calib_shots/pokeballs_tab.png
+!calib_shots/party_selector.png
+logs/
+.cline-home/
+tools/dev/monitor_pos.json

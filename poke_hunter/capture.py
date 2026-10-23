@@ -70,29 +70,16 @@ def grab_window_content(window) -> "np.ndarray | None":
     result = ctypes.windll.user32.PrintWindow(hwnd, save_dc.GetSafeHdc(), PW_RENDERFULLCONTENT)
     if not result:
         return None
-    import numpy as np
     data = bmp.GetBitmapBits(True)
     img = np.frombuffer(data, dtype=np.uint8).reshape((h, w, 4))
-    return np.ascontiguousarray(img[:, :, :3].copy())  # keep top-down orientation
-
-
-def _scale_bitmap(bmp, width, height):  # small helper kept for future resizing
-    try:
-        import win32ui
-        mfc = win32ui.CreateDCFromHandle(0)
-        dc = mfc.CreateCompatibleDC()
-    except Exception:  # noqa: BLE001
-        pass
+    return np.ascontiguousarray(img[:, :, :3])  # keep top-down orientation
 
 
 class Grabber:
-    """Fallback: whole-screen rectangle capture (foreground windows only)."""
-
     """Captures one game window; regions are window-relative."""
 
     def __init__(self, window: GameWindow):
         self.window = window
-        self._sct = mss.mss()
         self.last_full: Optional[np.ndarray] = None
         self.last_full_time: float = 0.0
         self.last_signature: Optional[str] = None
@@ -136,7 +123,6 @@ class Grabber:
             return img
 
     def crop(self, frame: np.ndarray, region: Region) -> np.ndarray:
-        from .util import clamp_crop, crop_region
         return crop_region(frame, region)
 
     def capture_region(self, region: Region, fresh: bool = False) -> np.ndarray:
@@ -153,7 +139,7 @@ class Grabber:
         if frame is None:
             return ""
         if region is not None:
-            from .util import clamp_crop, crop_region
+            from .util import crop_region
             frame = crop_region(frame, region)
         small = cv2.resize(frame, (64, 36), interpolation=cv2.INTER_AREA)
         return hashlib.md5(small.tobytes()).hexdigest()

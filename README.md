@@ -1,7 +1,7 @@
 # Pokémon Encounter Hunter
 
 Automated encounter hunting with aspect detection, battle, catching and
-Discord notifications, built with Python + Tesseract + mss + pyautogui/pydirectinput.
+Discord notifications, built with Python + Tesseract + mss + pydirectinput.
 
 **Status:** unit-tested (83 tests) and live-verified against the real game:
 encounter confirm → aspect reading (reskin/gradient chips) → flee / weaken /
@@ -16,7 +16,7 @@ see "Remaining real-game testing" below before using it on a new setup.
 
 1. Python 3.12+, Tesseract 5.x on PATH (verify: `python main.py check-env`).
 2. Requirements (already installed on this machine):
-   `pip install mss numpy opencv-python pillow pytesseract pygetwindow pywin32 pyautogui pydirectinput requests`
+   `pip install -r requirements.txt   (dev: requirements-dev.txt)`
 3. Configuration: edit `config/config.json` (target, battle behavior,
    automation limits, instance list).
 4. Discord webhook: environment variable `POKEMON_DISCORD_WEBHOOK` or file
