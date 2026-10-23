@@ -89,11 +89,12 @@ def press_key(window: GameWindow, key: str, times: int = 1) -> None:
         time.sleep(0.05)
 
 
-def select_all_and_delete(window: GameWindow) -> None:
+def select_all_and_delete(window: GameWindow, sweep: bool = True) -> None:
     """Ctrl+A + DEL, then a backspace sweep, inside a focused field: removes
     ALL existing text. The sweep is the safety net — a Roblox field that
     ignores Ctrl+A or swallows the single DEL is still guaranteed emptied
-    (backspace nukes the whole content char by char)."""
+    (backspace nukes the whole content char by char). ``sweep=False`` skips
+    that slow fallback; callers that verify emptiness enable it on retry."""
     focus(window)
     pydirectinput.keyDown("ctrl")
     time.sleep(0.05)
@@ -103,6 +104,8 @@ def select_all_and_delete(window: GameWindow) -> None:
     time.sleep(0.06)
     pydirectinput.press("delete")
     time.sleep(0.15)
+    if not sweep:
+        return
     for _ in range(34):
         pydirectinput.press("backspace")
         time.sleep(0.02)

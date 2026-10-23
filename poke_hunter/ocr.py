@@ -1,9 +1,12 @@
 """Tesseract OCR wrapper with per-region settings, confidence and retries."""
 from __future__ import annotations
 
+import hashlib
 import os
 import shutil
 import time
+from collections import OrderedDict
+from threading import Lock
 from dataclasses import dataclass
 from typing import List, Optional, Sequence, Tuple
 
@@ -58,10 +61,42 @@ def _prep(img: np.ndarray, upscale: int = 3) -> np.ndarray:
     return img
 
 
+_OCR_CACHE: "OrderedDict[tuple, TextResult]" = OrderedDict()
+_OCR_CACHE_MAX = 256
+_OCR_CACHE_LOCK = Lock()
+
+
+def clear_ocr_cache() -> None:
+    with _OCR_CACHE_LOCK:
+        _OCR_CACHE.clear()
+
+
 def read_text(img: np.ndarray, psm: int = PSM_SINGLE_LINE,
               whitelist: Optional[str] = None, upscale: int = 3,
               threshold: Optional[int] = None) -> TextResult:
-    """OCR one small region with a specific configuration."""
+    """OCR one small region (memoized on the exact pixels + settings).
+
+    Identical crops (idle panels, repeated stability re-reads) skip the
+    Tesseract subprocess entirely; any pixel change misses the cache."""
+    key = (img.shape, hashlib.blake2b(np.ascontiguousarray(img).tobytes(),
+                                      digest_size=16).digest(),
+           psm, whitelist, upscale, threshold)
+    with _OCR_CACHE_LOCK:
+        hit = _OCR_CACHE.get(key)
+        if hit is not None:
+            _OCR_CACHE.move_to_end(key)
+            return hit
+    res = _read_text_uncached(img, psm, whitelist, upscale, threshold)
+    if res.confidence >= 0:  # never cache failed/empty-engine results
+        with _OCR_CACHE_LOCK:
+            _OCR_CACHE[key] = res
+            while len(_OCR_CACHE) > _OCR_CACHE_MAX:
+                _OCR_CACHE.popitem(last=False)
+    return res
+
+
+def _read_text_uncached(img: np.ndarray, psm: int, whitelist: Optional[str],
+                        upscale: int, threshold: Optional[int]) -> TextResult:
     cfgs: List[Tuple[str, List[str]]] = []
     flags = ["--psm", str(psm)]
     extra = []

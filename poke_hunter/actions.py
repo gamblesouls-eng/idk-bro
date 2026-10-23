@@ -416,7 +416,9 @@ class Ui:
         self.click_region("search_field")
         time.sleep(0.2)
         for attempt in range(1, self.cfg.automation.max_action_retries + 1):
-            select_all_and_delete(self.window)
+            # fast path first; the verification below escalates to the
+            # backspace sweep only if the field is not actually empty
+            select_all_and_delete(self.window, sweep=attempt > 1)
             time.sleep(0.35)
             value, stable = self.region_text("search_field", attempts=2)
             if stable and query_field_empty(value):
