@@ -75,6 +75,9 @@ class EncounterBot:
         self.current_encounter_id = ""
         self._current_detected_text: str = ""
         self._matched_target_ids: list[str] = []
+        # default True: identify() overwrites it every encounter; a target
+        # flow that never reached identify falls back to inline reads
+        self._species_needed = True
         # aspect-chip reader started at encounter-confirm time (flee speed:
         # the chip window overlaps the UI-stability wait instead of adding
         # to it, and its length adapts to observed chip-render latency)
@@ -148,11 +151,19 @@ class EncounterBot:
                  "IDENTIFYING_GRADIENT / DETECTING_TINT ...")
 
         retries = self.cfg.automation.max_ocr_retries
+        # species OCR can burn a second of retries while the label is still
+        # fading; when no enabled target uses a species criterion it never
+        # matters for the decision -> skip it on the critical path (flee
+        # speed) and read it for logging during the flee animation instead.
+        species_needed = any(
+            t.enabled and t.criteria.species for t in self.cfg.targets)
+        self._species_needed = species_needed
         # the aspect readers are independent and each repeats internally with
         # short waits; running them concurrently brings the wall time down to
         # the slowest single reader (user: identify faster).
         with ThreadPoolExecutor(max_workers=4, thread_name_prefix="aspect") as ex:
-            f_species = ex.submit(self._read_species, retries)
+            f_species = (ex.submit(self._read_species, retries)
+                         if species_needed else None)
             f_shiny = ex.submit(
                 detect_star_stable, self.grab,
                 self.calib.region("shiny_indicator"), self.calib.shiny_star,
@@ -162,7 +173,7 @@ class EncounterBot:
                 self.calib.region("tint_indicator"), self.calib.tint_star,
                 retries, "tint")
             f_chips = ex.submit(self._collect_chip_result)
-            d.species = f_species.result()
+            d.species = f_species.result() if f_species else None
             d.shiny, shiny_stats = f_shiny.result()
             d.tint, tint_stats = f_tint.result()
             d.reskin, d.gradient = f_chips.result()
@@ -256,6 +267,23 @@ class EncounterBot:
         log.debug("species read: %r (stable=%s)", value, stable)
         return value if stable else None
 
+    def _start_species_log_read(self) -> None:
+        """Log-only species OCR kicked off as the flee animation starts.
+
+        The species label is still rendered while the run presentation
+        plays, so this read hides in game animation time: the flee decision
+        is already made and species is not part of it (flee speed)."""
+
+        def job():
+            try:
+                value = self._read_species(self.cfg.automation.max_ocr_retries)
+                if value:
+                    log.info("species (during flee): %r", value)
+            except BaseException as exc:  # noqa: BLE001 - logging only
+                log.debug("background species read failed: %r", exc)
+
+        threading.Thread(target=job, daemon=True, name="species-log").start()
+
     def _read_reskin(self, retries: int) -> Optional[str]:
         # reskin: readable-but-absent is "" ; unreadable is None
         value, stable = self.ui.region_text("reskin_label", attempts=retries)
@@ -307,6 +335,7 @@ class EncounterBot:
     # ------------------------------------------------------------------ #
     def flee(self, reasons) -> None:
         """Non-target: click RUN once, verify the encounter actually ended."""
+        self._start_species_log_read()
         log.info("FLEEING_NON_TARGET (reasons: %s)", ", ".join(reasons) if reasons else "-")
         max_retries = self.cfg.automation.max_action_retries
         for attempt in range(1, max_retries + 1):
@@ -553,6 +582,16 @@ class EncounterBot:
     def process_target(self, detected: Detected, matched_target_ids: list[str]) -> None:
         """Target match: notify, weaken, catch, notify."""
         self._immune_wild = False
+        if not self._species_needed and detected.species is None:
+            # species was skipped on the critical path (no target uses it):
+            # read it now for the notification text — the catch flow runs for
+            # tens of seconds and this is not a decision input anymore
+            try:
+                detected.species = self._read_species(
+                    self.cfg.automation.max_ocr_retries) or ""
+            except BaseException as exc:  # noqa: BLE001 - logging nicety
+                log.debug("species backfill for notification failed: %r", exc)
+            self._current_detected_text = detected.as_notification()
         detected_text = self._current_detected_text or "unknown Pokemon"
         if self.cfg.automation.notification_target_detected:
             self.set_state("TARGET_CONFIRMED")
